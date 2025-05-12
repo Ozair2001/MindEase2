@@ -6,6 +6,8 @@ import { useState, useEffect, useRef } from "react"
 import Layout from "../components/layout"
 import { Brain, User, Send, Loader, AlertTriangle, X, HelpCircle } from "lucide-react"
 import { Button } from "@/components/ui/button"
+import { useSearchParams } from "next/navigation"
+import { useSession } from "next-auth/react"
 
 interface Message {
   role: "user" | "assistant" | "error"
@@ -27,6 +29,57 @@ export default function ChatPage() {
   const [visibleExplanations, setVisibleExplanations] = useState<any>({})
   const [explanations, setExplanations] = useState<Record<number, any>>({})
   const [followUpSwitch, setFollowUpSwitch] = useState(false)
+  const searchParams = useSearchParams()
+  const paramId = searchParams.get("chatId")
+  const [chatId, setChatId] = useState<string | null>(null);
+  const { data: session, status } = useSession();
+
+  useEffect(() => {
+    if (status !== "authenticated") return
+    if (!paramId) return
+    fetch(`/api/chat-history/${paramId}`)
+      .then((res) => res.json())
+      .then((chat) => {
+        setMessages(chat.messages)
+      })
+  }, [paramId])
+
+  useEffect(() => {
+    if (status !== "authenticated") return
+    const init = async () => {
+      if (paramId) {
+        // load existing chat
+        const res = await fetch(`/api/chat-history/${paramId}`)
+        const chat = await res.json()
+        setChatId(paramId)
+        setMessages(chat.messages)
+      } else {
+        // create brand-new chat
+        const res = await fetch("/api/chat-history", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            userId: session?.user?.image,
+            messages: [],
+          }),
+        })
+        const newChat = await res.json()
+        setChatId(newChat._id)
+        setMessages([])
+      }
+    }
+    init()
+  }, [paramId])
+
+  useEffect(() => {
+    if (!chatId) return
+    // skip the very first render if you like, or just always sync
+    fetch(`/api/chat-history/${chatId}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ messages }),
+    }).catch(console.error)
+  }, [messages, chatId])
 
   // Remove these states as we don't need them anymore
   // const [isLoggedIn, setIsLoggedIn] = useState(false)

@@ -13,10 +13,11 @@ import { Brain } from "lucide-react"
 //react icons
 import { FaGithub } from "react-icons/fa"
 import { useState } from "react"
-import { signIn } from "next-auth/react"
+import { getSession, signIn, useSession } from "next-auth/react"
 import { useRouter } from "next/navigation"
 import { toast } from "sonner"
 import { TriangleAlert } from "lucide-react"
+import { loginAction } from "../actions/auth-actions"
 
 const SignIn = () => {
   const [email, setEmail] = useState<string>("")
@@ -34,7 +35,7 @@ const SignIn = () => {
       password,
     })
     if (res?.ok) {
-      router.push("/chat")
+      router.push("/chat");
       toast.success("login successful")
     } else if (res?.status === 401) {
       setError("Invalid Credentials")

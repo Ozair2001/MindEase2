@@ -3,26 +3,30 @@
 import Link from "next/link"
 import { Brain, User, LogOut } from "lucide-react"
 import type React from "react"
-import { usePathname } from "next/navigation"
+import { redirect, usePathname } from "next/navigation"
 import { useState, useEffect } from "react"
+import { signOut, useSession } from "next-auth/react"
 
 export default function Layout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname()
   const isChatPage = pathname === "/chat"
+  const { data: session } = useSession();
 
   // This would be replaced with your actual auth logic
   const [isLoggedIn, setIsLoggedIn] = useState(false)
-  const [user, setUser] = useState<{ fullName: string } | null>(null)
+  const [user, setUser] = useState<{ fullName: string,uid:string } | null>(null)
 
   // Simulate checking auth status - replace with your actual auth check
   useEffect(() => {
     // For demo purposes - check if there's a stored session
-    const hasSession = localStorage.getItem("sessionId")
-    if (hasSession) {
+    if (session?.user) {
       setIsLoggedIn(true)
-      setUser({ fullName: "User" }) // Replace with actual user data
+      setUser({
+        fullName: session.user.name ?? "",
+        uid:       session.user.image   ?? ""  // or `.email` or `.image` if that’s what you meant
+      });
     }
-  }, [])
+  }, [session])
 
   return (
     <div className="min-h-screen flex flex-col">
@@ -43,6 +47,11 @@ export default function Layout({ children }: { children: React.ReactNode }) {
 
               {isLoggedIn ? (
                 // Show user menu when logged in
+                <>
+                <Link href="/chat-history" className="text-gray-700 hover:text-primary transition-colors">
+                Chat History
+              </Link>
+              
                 <div className="flex items-center space-x-4">
                   <div className="flex items-center space-x-2 px-4 py-2 rounded-lg bg-primary/10 text-primary">
                     <User className="h-4 w-4" />
@@ -55,9 +64,9 @@ export default function Layout({ children }: { children: React.ReactNode }) {
                     Profile
                   </Link>
                   <button
-                    onClick={() => {
+                    onClick={ async () => {
                       // Handle logout
-                      localStorage.removeItem("sessionId")
+                      await signOut({redirect: false})
                       setIsLoggedIn(false)
                       setUser(null)
                     }}
@@ -65,7 +74,8 @@ export default function Layout({ children }: { children: React.ReactNode }) {
                   >
                     <LogOut className="h-4 w-4 mr-2" /> Logout
                   </button>
-                </div>
+                </div></>
+                
               ) : (
                 // Show login/signup when not logged in and not on chat page
                 !isChatPage && (
